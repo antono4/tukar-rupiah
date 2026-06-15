@@ -803,6 +803,25 @@
         let lastFetchTime = null;
         let isLoading = false;
 
+        // Yahoo Finance symbol mapping
+        const yahooSymbols = {
+            IDR: 'IDRUSD=X',
+            USD: 'USDUSD=X',
+            EUR: 'EURUSD=X',
+            GBP: 'GBPUSD=X',
+            JPY: 'JPYUSD=X',
+            SGD: 'SGDUSD=X',
+            MYR: 'MYRUSD=X',
+            THB: 'THBUSD=X',
+            AUD: 'AUDUSD=X',
+            KRW: 'KRWUSD=X',
+            CNY: 'CNYUSD=X',
+            HKD: 'HKDUSD=X',
+            INR: 'INRUSD=X',
+            PHP: 'PHPUSD=X',
+            VND: 'VNDUSD=X'
+        };
+
         // DOM Elements
         const fromCurrency = document.getElementById('fromCurrency');
         const toCurrency = document.getElementById('toCurrency');
@@ -834,7 +853,7 @@
             return parseFloat(str.replace(/,/g, '')) || 0;
         }
 
-        // Convert amount
+        // Convert amount using cached rates
         function convert() {
             const from = fromCurrency.value;
             const to = toCurrency.value;
@@ -854,29 +873,25 @@
                 return;
             }
 
-            // Calculate conversion
-            let result;
-            if (exchangeRates[from] && exchangeRates[to]) {
-                // Convert through base currency (EUR)
-                const fromRate = exchangeRates[from];
-                const toRate = exchangeRates[to];
-                const amountInBase = amount / fromRate;
-                result = amountInBase * toRate;
+            // Convert using USD as base
+            if (exchangeRates.IDR && exchangeRates[from] && exchangeRates[to]) {
+                // amount in IDR -> USD -> target currency
+                const amountInUSD = amount / exchangeRates.IDR;
+                const result = amountInUSD * exchangeRates[to];
 
-                // Update result display
                 toAmount.value = formatNumber(result, to);
                 resultValue.textContent = `${currencySymbols[to]} ${formatNumber(result, to)}`;
 
                 // Update rate info
-                const rate = toRate / fromRate;
+                const rate = exchangeRates[to] / exchangeRates.IDR;
                 rateInfo.textContent = `1 ${from} = ${formatNumber(rate, to)} ${to}`;
             } else {
-                // Fallback: direct API call for specific pair
+                // Fetch specific pair if rates not available
                 fetchExchangeRate(from, to, amount);
             }
         }
 
-        // Fetch exchange rate from API
+        // Fetch exchange rate from Yahoo Finance API
         async function fetchExchangeRate(from, to, amount) {
             if (isLoading) return;
             isLoading = true;
@@ -884,20 +899,40 @@
             errorMessage.classList.remove('show');
 
             try {
-                const response = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}&amount=${amount}`);
+                const fromSymbol = yahooSymbols[from] || `${from}USD=X`;
+                const toSymbol = yahooSymbols[to] || `${to}USD=X`;
                 
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                const response = await fetch(
+                    `https://query1.finance.yahoo.com/v8/finance/chart/${fromSymbol}?interval=1d&range=1d`,
+                    { headers: { 'User-Agent': 'Mozilla/5.0' } }
+                );
+                
+                if (!response.ok) throw new Error('Network error');
+                
+                const data = await response.json();
+                const rate = data.chart.result[0].meta.regularMarketPrice;
+                
+                // Convert: amount -> IDR -> USD -> target
+                let result;
+                if (from === 'IDR') {
+                    result = amount * rate;
+                } else {
+                    // First convert to IDR
+                    const fromToIDR = rate ? 1 / rate : exchangeRates[from] || 1;
+                    const inIDR = amount * fromToIDR;
+                    // Then to target
+                    if (to === 'IDR') {
+                        result = inIDR;
+                    } else {
+                        const idrToTarget = exchangeRates[to] || 1;
+                        result = inIDR / exchangeRates.IDR * idrToTarget;
+                    }
                 }
 
-                const data = await response.json();
+                toAmount.value = formatNumber(result, to);
+                resultValue.textContent = `${currencySymbols[to]} ${formatNumber(result, to)}`;
+                rateInfo.textContent = `1 ${from} = ${formatNumber(result / amount, to)} ${to}`;
                 
-                if (data.rates && data.rates[to]) {
-                    const result = data.rates[to];
-                    toAmount.value = formatNumber(result, to);
-                    resultValue.textContent = `${currencySymbols[to]} ${formatNumber(result, to)}`;
-                    rateInfo.textContent = `1 ${from} = ${formatNumber(result / amount, to)} ${to}`;
-                }
             } catch (error) {
                 console.error('Error fetching exchange rate:', error);
                 errorMessage.classList.add('show');
@@ -907,19 +942,52 @@
             }
         }
 
-        // Fetch all exchange rates
+        // Fetch all exchange rates from Yahoo Finance
         async function fetchAllRates() {
             try {
-                const response = await fetch('https://api.frankfurter.app/latest?from=IDR');
+                // Fetch USD/IDR rate first (base rate)
+                const usdIdrResponse = await fetch(
+                    'https://query1.finance.yahoo.com/v8/finance/chart/IDRUSD=X?interval=1d&range=1d',
+                    { headers: { 'User-Agent': 'Mozilla/5.0' } }
+                );
                 
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
+                if (!usdIdrResponse.ok) throw new Error('Failed to fetch IDR/USD');
+                
+                const usdIdrData = await usdIdrResponse.json();
+                const idrPerUsd = usdIdrData.chart.result[0].meta.regularMarketPrice;
+                exchangeRates.IDR = 1 / idrPerUsd; // Store as: how many IDR per 1 USD
+                
+                // Fetch all other currencies against USD in parallel
+                const currencies = ['EUR', 'GBP', 'JPY', 'SGD', 'MYR', 'THB', 'AUD', 'KRW', 'CNY', 'HKD', 'INR', 'PHP', 'VND'];
+                
+                const fetchPromises = currencies.map(async (currency) => {
+                    try {
+                        const symbol = yahooSymbols[currency];
+                        const response = await fetch(
+                            `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`,
+                            { headers: { 'User-Agent': 'Mozilla/5.0' } }
+                        );
+                        
+                        if (!response.ok) return { currency, rate: null };
+                        
+                        const data = await response.json();
+                        const rate = data.chart.result[0].meta.regularMarketPrice;
+                        
+                        // Store: how many units of currency per 1 USD
+                        return { currency, rate: 1 / rate };
+                    } catch (e) {
+                        return { currency, rate: null };
+                    }
+                });
 
-                const data = await response.json();
-                exchangeRates = { EUR: 1, ...data.rates }; // Add EUR as base
+                const results = await Promise.all(fetchPromises);
+                results.forEach(({ currency, rate }) => {
+                    if (rate !== null && rate !== Infinity && !isNaN(rate)) {
+                        exchangeRates[currency] = rate;
+                    }
+                });
+
                 lastFetchTime = new Date();
-                
                 updateLastUpdated();
                 convert();
                 updatePopularCurrencies();
@@ -927,8 +995,6 @@
             } catch (error) {
                 console.error('Error fetching all rates:', error);
                 errorMessage.classList.add('show');
-                
-                // Use fallback rates if API fails
                 useFallbackRates();
             }
         }
@@ -936,21 +1002,21 @@
         // Fallback rates (approximate)
         function useFallbackRates() {
             exchangeRates = {
-                EUR: 1,
-                IDR: 16950,
-                USD: 1.09,
-                GBP: 0.86,
-                JPY: 163,
-                SGD: 1.47,
-                MYR: 5.1,
-                THB: 38.5,
-                AUD: 1.67,
-                KRW: 1450,
-                CNY: 7.85,
-                HKD: 8.52,
-                INR: 91,
-                PHP: 62,
-                VND: 27000
+                IDR: 16900,
+                USD: 1,
+                EUR: 0.92,
+                GBP: 0.79,
+                JPY: 157,
+                SGD: 1.35,
+                MYR: 4.7,
+                THB: 35.5,
+                AUD: 1.54,
+                KRW: 1340,
+                CNY: 7.24,
+                HKD: 7.82,
+                INR: 83.5,
+                PHP: 57,
+                VND: 24800
             };
             lastFetchTime = new Date();
             updateLastUpdated();
