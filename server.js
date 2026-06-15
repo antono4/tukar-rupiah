@@ -141,8 +141,8 @@ const server = http.createServer(async (req, res) => {
             const rates = await fetchAllRates();
             // rates contains: currency -> USD per 1 unit of currency
             // e.g., IDR: 17675 means 1 USD = 17,675 IDR
+            // e.g., EUR: 1.16 means 1 EUR = 1.16 USD
             // We need to convert to IDR per 1 unit of currency
-            // e.g., IDR: 1, USD: 17675, EUR: 17675/1.1598 = 15238
             
             const idrPerUsd = rates.IDR; // 1 USD = 17,675 IDR
             const idrRates = { IDR: 1 };
@@ -153,7 +153,7 @@ const server = http.createServer(async (req, res) => {
                     // How many IDR per 1 unit of this currency
                     // If 1 USD = 17,675 IDR and 1 EUR = 1.16 USD
                     // Then 1 EUR = 1.16 * 17,675 = 20,503 IDR
-                    idrRates[currency] = idrPerUsd / usdPerUnit;
+                    idrRates[currency] = idrPerUsd * usdPerUnit;
                 }
             }
             
