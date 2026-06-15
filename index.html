@@ -906,8 +906,12 @@
         </p>
 
         <footer>
-            <p>Data kurs real-time dari <a href="https://www.exchangerate-api.com" target="_blank">ExchangeRate-API</a></p>
-            <p style="margin-top: 5px;">Akurasi 100% • Update otomatis • Dibuat dengan ❤️ untuk Indonesia</p>
+            <p id="source-indicator">📡 <span style="color: var(--success);">Google Finance</span> • <span class="live-dot"></span> LIVE</p>
+            <p style="margin-top: 5px;">
+                <span id="update-timer">Update dalam 5 detik</span> • 
+                <span id="last-update">-</span>
+            </p>
+            <p style="margin-top: 5px;">Dibuat dengan ❤️ untuk Indonesia</p>
         </footer>
     </div>
 
@@ -1097,6 +1101,9 @@
 
         // Fetch all exchange rates from Google Finance via server
         async function fetchAllRates() {
+            // Show loading indicator
+            resultSection.classList.add('loading');
+            
             try {
                 // Try server-side API first (Google Finance data)
                 const response = await fetch('/api/rates');
@@ -1104,7 +1111,9 @@
                     const data = await response.json();
                     exchangeRates = data.rates;
                     lastFetchTime = new Date(data.timestamp);
-                    console.log('Rates from Google Finance:', exchangeRates);
+                    
+                    // Update source indicator
+                    updateSourceIndicator('Google Finance', true);
                 } else {
                     throw new Error('Server API failed');
                 }
@@ -1113,8 +1122,13 @@
                 convert();
                 updatePopularCurrencies();
                 
+                // Reset countdown after successful fetch
+                nextUpdateIn = 5;
+                
             } catch (error) {
                 console.error('Error fetching from server:', error);
+                updateSourceIndicator('Google Finance', false);
+                
                 // Fallback to direct API
                 try {
                     const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -1140,12 +1154,28 @@
                         VND: idrPerUsd / usdRates.VND,
                     };
                     lastFetchTime = new Date();
+                    updateSourceIndicator('ExchangeRate-API', true);
+                    nextUpdateIn = 5;
                 } catch (e) {
                     useFallbackRates();
+                    updateSourceIndicator('Fallback', false);
                 }
                 updateLastUpdated();
                 convert();
                 updatePopularCurrencies();
+            } finally {
+                // Remove loading indicator
+                resultSection.classList.remove('loading');
+            }
+        }
+
+        // Update source indicator
+        function updateSourceIndicator(source, success) {
+            const indicator = document.getElementById('source-indicator');
+            if (indicator) {
+                indicator.innerHTML = success 
+                    ? `📡 <span style="color: var(--success);">${source}</span> • <span class="live-dot"></span> LIVE`
+                    : `📡 <span style="color: #FF7B72;">${source}</span> (Fallback)`;
             }
         }
 
@@ -1276,24 +1306,25 @@
 
         // Update last updated text
         function updateLastUpdated() {
-            const now = new Date();
-            const options = { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            };
-            lastUpdated.innerHTML = `
-                <span>📅</span>
-                <span>Update: ${now.toLocaleTimeString('id-ID', options)}</span>
-                <span class="live-badge" style="margin-left: 10px; font-size: 0.75rem;">
-                    <span class="live-dot"></span>
-                    LIVE
-                </span>
-            `;
+            if (lastFetchTime) {
+                const options = { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                };
+                lastUpdated.innerHTML = `
+                    <span>📅</span>
+                    <span>Update: ${lastFetchTime.toLocaleTimeString('id-ID', options)}</span>
+                `;
+                
+                // Also update footer
+                const lastUpdateEl = document.getElementById('last-update');
+                if (lastUpdateEl) {
+                    lastUpdateEl.textContent = `Terakhir: ${lastFetchTime.toLocaleTimeString('id-ID', options)}`;
+                }
+            }
         }
-        setInterval(updateLastUpdated, 1000);
-        updateLastUpdated();
 
         // Swap currencies
         function swapCurrencies() {
@@ -1344,8 +1375,19 @@
 
         swapBtn.addEventListener('click', swapCurrencies);
 
-        // Auto-refresh rates every 5 seconds
-        setInterval(fetchAllRates, 5000);
+        // Auto-refresh rates every 5 seconds with countdown
+        let nextUpdateIn = 5;
+        const refreshInterval = setInterval(fetchAllRates, 5000);
+        
+        // Update countdown timer
+        setInterval(() => {
+            nextUpdateIn--;
+            if (nextUpdateIn <= 0) nextUpdateIn = 5;
+            const timerEl = document.getElementById('update-timer');
+            if (timerEl) {
+                timerEl.textContent = `Update dalam ${nextUpdateIn} detik`;
+            }
+        }, 1000);
 
         // Initialize
         updateSymbol();
