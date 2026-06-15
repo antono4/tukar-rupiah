@@ -639,6 +639,7 @@
                 <div class="logo-icon">RP</div>
             </div>
             <h1>Tukar Rupiah</h1>
+            <div id="realtime-clock" style="font-size: 1.1rem; color: var(--text-secondary); margin: 10px 0; font-weight: 500;"></div>
             <p class="subtitle">
                 Konversi Mata Uang Indonesia
                 <span class="live-badge">
@@ -1044,21 +1045,82 @@
             toSymbol.textContent = currencySymbols[toCurrency.value];
         }
 
-        // Update last updated text
+        // Update last updated text with real-time clock
         function updateLastUpdated() {
-            if (lastFetchTime) {
-                const options = { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    second: '2-digit',
-                    timeZoneName: 'short'
-                };
-                lastUpdated.innerHTML = `
-                    <span>🕐</span>
-                    <span>Update terakhir: ${lastFetchTime.toLocaleString('id-ID', options)}</span>
-                `;
-            }
+            const now = new Date();
+            const options = { 
+                weekday: 'long',
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZoneName: 'short'
+            };
+            
+            lastUpdated.innerHTML = `
+                <span>📅</span>
+                <span>Update: ${now.toLocaleString('id-ID', options)}</span>
+                <span class="live-badge" style="margin-left: 10px; font-size: 0.75rem;">
+                    <span class="live-dot"></span>
+                    LIVE
+                </span>
+            `;
         }
+
+        // Check if forex market is open (Mon-Fri, 00:00-23:00 WIB)
+        function isForexMarketOpen() {
+            const now = new Date();
+            // Convert to WIB (UTC+7)
+            const wibTime = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const day = wibTime.getUTCDay();
+            const hour = wibTime.getUTCHours();
+            
+            // Market open: Monday(1) to Friday(5), hour 00-22 WIB
+            const isWeekday = day >= 1 && day <= 5;
+            const isMarketHours = hour >= 0 && hour < 23;
+            
+            return isWeekday && isMarketHours;
+        }
+
+        // Real-time clock in header
+        function updateRealtimeClock() {
+            const now = new Date();
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+            const timeOptions = {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            
+            const dateStr = now.toLocaleDateString('id-ID', options);
+            const timeStr = now.toLocaleTimeString('id-ID', timeOptions);
+            const marketOpen = isForexMarketOpen();
+            
+            const marketStatus = marketOpen 
+                ? '<span style="background: rgba(63, 185, 80, 0.2); color: #3FB950; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 10px;">🏛️ PASAR TERSEDIA</span>'
+                : '<span style="background: rgba(248, 81, 73, 0.2); color: #FF7B72; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 10px;">🌙 PASAR TUTUP</span>';
+            
+            document.getElementById('realtime-clock').innerHTML = `
+                <span style="color: var(--accent);">${dateStr}</span>
+                <span style="margin-left: 15px; color: var(--primary); font-family: 'Playfair Display', serif; font-size: 1.4rem;">⏰ ${timeStr}</span>
+                ${marketStatus}
+            `;
+        }
+
+        // Update clock every second
+        setInterval(updateRealtimeClock, 1000);
+        updateRealtimeClock(); // Initial call
+        setInterval(updateLastUpdated, 1000);
+        updateLastUpdated(); // Initial call
 
         // Swap currencies
         function swapCurrencies() {
