@@ -1095,49 +1095,57 @@
             }
         }
 
-        // Fetch all exchange rates with high accuracy
+        // Fetch all exchange rates from Google Finance via server
         async function fetchAllRates() {
             try {
-                // Use exchangerate-api.com for accurate USD base rates
-                const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-                if (!response.ok) throw new Error('Failed to fetch rates');
-                
-                const data = await response.json();
-                const usdRates = data.rates;
-                
-                // Build exchange rates with IDR as base
-                // exchangeRates[currency] = IDR per 1 unit of currency
-                const idrPerUsd = usdRates.IDR;
-                
-                exchangeRates = {
-                    IDR: 1,
-                    USD: idrPerUsd,
-                    EUR: idrPerUsd / usdRates.EUR,
-                    GBP: idrPerUsd / usdRates.GBP,
-                    JPY: idrPerUsd / usdRates.JPY,
-                    SGD: idrPerUsd / usdRates.SGD,
-                    MYR: idrPerUsd / usdRates.MYR,
-                    THB: idrPerUsd / usdRates.THB,
-                    AUD: idrPerUsd / usdRates.AUD,
-                    KRW: idrPerUsd / usdRates.KRW,
-                    CNY: idrPerUsd / usdRates.CNY,
-                    HKD: idrPerUsd / usdRates.HKD,
-                    INR: idrPerUsd / usdRates.INR,
-                    PHP: idrPerUsd / usdRates.PHP,
-                    VND: idrPerUsd / usdRates.VND,
-                    CAD: idrPerUsd / usdRates.CAD,
-                    CHF: idrPerUsd / usdRates.CHF,
-                    NZD: idrPerUsd / usdRates.NZD,
-                };
+                // Try server-side API first (Google Finance data)
+                const response = await fetch('/api/rates');
+                if (response.ok) {
+                    const data = await response.json();
+                    exchangeRates = data.rates;
+                    lastFetchTime = new Date(data.timestamp);
+                    console.log('Rates from Google Finance:', exchangeRates);
+                } else {
+                    throw new Error('Server API failed');
+                }
 
-                lastFetchTime = new Date();
                 updateLastUpdated();
                 convert();
                 updatePopularCurrencies();
                 
             } catch (error) {
-                console.error('Error fetching all rates:', error);
-                useFallbackRates();
+                console.error('Error fetching from server:', error);
+                // Fallback to direct API
+                try {
+                    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                    const data = await response.json();
+                    const usdRates = data.rates;
+                    const idrPerUsd = usdRates.IDR;
+                    
+                    exchangeRates = {
+                        IDR: 1,
+                        USD: idrPerUsd,
+                        EUR: idrPerUsd / usdRates.EUR,
+                        GBP: idrPerUsd / usdRates.GBP,
+                        JPY: idrPerUsd / usdRates.JPY,
+                        SGD: idrPerUsd / usdRates.SGD,
+                        MYR: idrPerUsd / usdRates.MYR,
+                        THB: idrPerUsd / usdRates.THB,
+                        AUD: idrPerUsd / usdRates.AUD,
+                        KRW: idrPerUsd / usdRates.KRW,
+                        CNY: idrPerUsd / usdRates.CNY,
+                        HKD: idrPerUsd / usdRates.HKD,
+                        INR: idrPerUsd / usdRates.INR,
+                        PHP: idrPerUsd / usdRates.PHP,
+                        VND: idrPerUsd / usdRates.VND,
+                    };
+                    lastFetchTime = new Date();
+                } catch (e) {
+                    useFallbackRates();
+                }
+                updateLastUpdated();
+                convert();
+                updatePopularCurrencies();
             }
         }
 
@@ -1161,9 +1169,6 @@
                 VND: 0.72
             };
             lastFetchTime = new Date();
-            updateLastUpdated();
-            convert();
-            updatePopularCurrencies();
         }
 
         // Update popular currencies grid
@@ -1339,8 +1344,8 @@
 
         swapBtn.addEventListener('click', swapCurrencies);
 
-        // Auto-refresh rates every 5 minutes
-        setInterval(fetchAllRates, 5 * 60 * 1000);
+        // Auto-refresh rates every 5 seconds
+        setInterval(fetchAllRates, 5000);
 
         // Initialize
         updateSymbol();
