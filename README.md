@@ -1,5 +1,8 @@
 # 💱 Tukar Rupiah - Konversi Mata Uang Indonesia
 
+> **Created by Antono**
+
+
 Aplikasi konversi mata uang Indonesia dengan kurs real-time dari Google Finance.
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue)
