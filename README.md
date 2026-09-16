@@ -1,1 +1,63 @@
-Last updated: 2026-09-16 10:04:05 WIB
+<!-- README ini dihasilkan otomatis oleh .github/workflows/generate-readme.yml -->
+<!-- Jangan edit manual: perubahan akan ditimpa pada run berikutnya. -->
+
+<h1 align="center">Tukar Rupiah 👋</h1>
+
+<p align="center">
+  <em>💰 Tukar Rupiah - Indonesian currency exchange rate tracker and converter</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/antono4/tukar-rupiah"><img alt="GitHub repo" src="https://img.shields.io/badge/GitHub-antono4/tukar-rupiah-blue?logo=github"></a>
+  <a href="https://antono4.github.io/tukar-rupiah/"><img alt="Live Demo" src="https://img.shields.io/badge/Live%20Demo-Online-success?logo=githubpages"></a>
+  <img alt="Files" src="https://img.shields.io/badge/Files-4-informational">
+  <img alt="Last commit" src="https://img.shields.io/github/last-commit/antono4/tukar-rupiah">
+</p>
+
+---
+
+## 📖 Tentang
+
+Repository **`tukar-rupiah`** adalah situs statis yang dibangun dengan HTML, JavaScript.
+Situs ini diterbitkan melalui **GitHub Pages** dan dapat diakses di [`https://antono4.github.io/tukar-rupiah/`](https://antono4.github.io/tukar-rupiah/).
+
+## 🗂️ Struktur Proyek
+
+```
+tukar-rupiah/
+.github/
+  workflows/
+LICENSE
+index.html
+server.js
+```
+
+## 🛠️ Teknologi
+
+Berdasarkan ekstensi berkas yang terdeteksi di repository:
+
+- `HTML`
+- `JavaScript`
+
+> Total **4 berkas** di repository (di luar `.git`, `node_modules`, `dist`, dan `build`).
+
+## 🚀 Menjalankan Secara Lokal
+
+Tanpa dependency apa pun. Buka `index.html` langsung di browser, atau jalankan server statis:
+
+```bash
+python3 -m http.server 8000
+# lalu buka http://localhost:8000
+```
+
+## 📬 Kontak
+
+- GitHub: [antono4](https://github.com/antono4)
+
+## 📄 Lisensi
+
+Proyek ini dilisensikan di bawah MIT License — lihat berkas [`LICENSE`](./LICENSE).
+
+---
+
+<sub>README ini di-generate otomatis oleh GitHub Actions `.github/workflows/generate-readme.yml`.</sub>
