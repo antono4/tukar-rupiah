@@ -1,1 +1,26 @@
-Last updated: 2026-11-05 10:08:25 WIB
+# tukar-rupiah
+
+
+
+## 📋 Overview
+
+This repository contains **10 files** and is built with the following technologies:
+
+HTML, JavaScript
+
+## 🚀 Quick Start
+
+## ✨ Features
+
+- 📝 Auto-generated documentation
+
+## 🛠️ Technologies
+
+HTML, JavaScript
+
+## 📄 License
+
+MIT License
+
+---
+*Last updated: 2026-11-05 13:44:31 WIB*
